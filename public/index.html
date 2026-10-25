@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Art Studio</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 900px; margin: 0 auto; padding: 16px; color: #222; }
+  nav { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; border-bottom: 1px solid #ccc; padding-bottom: 8px; margin-bottom: 16px; }
+  nav .spacer { flex: 1; }
+  button { cursor: pointer; padding: 5px 10px; }
+  nav button.active { font-weight: bold; text-decoration: underline; }
+  .card { border: 1px solid #ddd; border-radius: 6px; padding: 10px; margin: 8px 0; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  label { display: block; margin: 8px 0 2px; font-size: 14px; }
+  input, select, textarea { padding: 5px; width: 100%; max-width: 360px; box-sizing: border-box; }
+  .msg { padding: 8px; border-radius: 4px; margin: 8px 0; }
+  .err { background: #fde8e8; color: #8a1c1c; }
+  .ok { background: #e6f6e6; color: #1d5c1d; }
+  .muted { color: #777; }
+  .card { overflow-wrap: anywhere; }
+  .thumb { width: 150px; height: 150px; object-fit: contain; background: #f4f4f4; border: 1px solid #eee; border-radius: 4px; flex: none; }
+  .tag { font-size: 12px; padding: 1px 6px; border-radius: 10px; background: #eee; }
+  .tag.sold, .tag.cancelled, .tag.declined { background: #f3d6d6; }
+  .tag.available, .tag.placed, .tag.confirmed, .tag.accepted { background: #d6f0d6; }
+</style>
+</head>
+<body>
+<h1>Art Studio</h1>
+<nav id="nav"></nav>
+<div id="flash"></div>
+<main id="main"></main>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const money = (n) => (config?.currency === 'INR' ? '₹' : '') + Number(n).toLocaleString('en-IN');
+let user = null, config = null, view = 'paintings';
+try { user = JSON.parse(localStorage.user || 'null'); } catch {}
+
+// ---- API wrapper: attaches token, throws Error(message) on non-2xx ----
+async function api(method, url, body) {
+  const res = await fetch(url, {
+    method, headers: { 'Content-Type': 'application/json', ...(localStorage.token ? { Authorization: 'Bearer ' + localStorage.token } : {}) },
+    body: body ? JSON.stringify(body) : undefined });
+  const data = await res.json().catch(() => ({}));
+  if (res.status === 401 && localStorage.token) { logout(); throw new Error(data.error || 'Please log in'); }
+  if (!res.ok) throw new Error(data.error || 'Request failed');
+  return data;
+}
+function flash(msg, ok) {
+  $('#flash').innerHTML = msg ? `<div class="msg ${ok ? 'ok' : 'err'}">${esc(msg)}</div>` : '';
+}
+function logout() { delete localStorage.token; delete localStorage.user; user = null; render(); }
+
+// ---- generic loading / empty / error handling for every data screen ----
+async function loadInto(el, fetcher, renderFn, emptyText) {
+  el.innerHTML = '<p class="muted">Loading…</p>';
+  try {
+    const data = await fetcher();
+    if (Array.isArray(data) && !data.length) { el.innerHTML = `<p class="muted">${esc(emptyText)}</p>`; return; }
+    renderFn(el, data);
+  } catch (e) {
+    el.innerHTML = `<div class="msg err">Could not load: ${esc(e.message)} <button data-retry>Retry</button></div>`;
+    el.querySelector('[data-retry]').onclick = () => loadInto(el, fetcher, renderFn, emptyText);
+  }
+}
+// run an action, show message, then refresh the current view (also refreshes after refusals, e.g. "just sold")
+async function act(fn, okMsg) {
+  try { await fn(); flash(okMsg, true); } catch (e) { flash(e.message, false); }
+  show(view);
+}
+
+// ---- shell ----
+const TABS = {
+  customer: [['paintings', 'Paintings'], ['orders', 'My orders'], ['wall', 'Book a wall'], ['bookings', 'My bookings'], ['pottery', 'Request pottery'], ['requests', 'My pottery requests']],
+  admin: [['paintings', 'Paintings'], ['orders', 'All orders'], ['bookings', 'All bookings'], ['requests', 'All pottery requests']],
+};
+function render() {
+  if (!user) { $('#nav').innerHTML = ''; return authView(); }
+  $('#nav').innerHTML = TABS[user.role].map(([k, l]) => `<button data-v="${k}" class="${k === view ? 'active' : ''}">${l}</button>`).join('')
+    + `<span class="spacer"></span><span class="muted">${esc(user.email)} (${user.role})</span><button id="lo">Log out</button>`;
+  $('#nav').querySelectorAll('[data-v]').forEach(b => b.onclick = () => { flash(''); show(b.dataset.v); });
+  $('#lo').onclick = logout;
+  show(view);
+}
+async function show(v) {
+  view = TABS[user.role].some(t => t[0] === v) ? v : 'paintings';
+  $('#nav').querySelectorAll('[data-v]').forEach(b => b.classList.toggle('active', b.dataset.v === view));
+  if (!config) { try { config = await api('GET', '/api/config'); } catch (e) { $('#main').innerHTML = `<div class="msg err">${esc(e.message)}</div>`; return; } }
+  $('#main').innerHTML = '<div id="box"></div>';
+  ({ paintings: paintingsView, orders: ordersView, wall: wallView, bookings: bookingsView, pottery: potteryFormView, requests: requestsView })[view]($('#box'));
+}
+
+// ---- login / sign-up ----
+function authView() {
+  $('#main').innerHTML = `<div class="card"><h2>Log in or sign up</h2>
+    <label>Email</label><input id="em" type="email"><label>Password</label><input id="pw" type="password">
+    <div class="row" style="margin-top:10px"><button id="li">Log in</button><button id="su">Sign up (customer)</button></div>
+    </div>`;
+  const go = (path) => async () => {
+    try {
+      const r = await api('POST', path, { email: $('#em').value, password: $('#pw').value });
+      localStorage.token = r.token; localStorage.user = JSON.stringify(r.user); user = r.user; view = 'paintings'; flash(''); render();
+    } catch (e) { flash(e.message, false); }
+  };
+  $('#li').onclick = go('/api/login'); $('#su').onclick = go('/api/signup');
+}
+
+// ---- paintings ----
+function paintingsView(box) {
+  const admin = user.role === 'admin';
+  box.innerHTML = (admin ? '<div id="pform"></div>' : '') + '<div id="list"></div>';
+  if (admin) paintingForm($('#pform'));
+  loadInto($('#list'), () => api('GET', '/api/paintings'), (el, rows) => {
+    el.innerHTML = rows.map(p => `<div class="card" data-id="${p.id}"><div class="row" style="align-items:flex-start">${p.image_url ? `<img class="thumb" src="/${esc(p.image_url)}" alt="">` : ''}<div style="flex:1;min-width:200px"><div class="row"><b>${esc(p.title)}</b>
+      <span class="tag ${p.status}">${p.status}</span><span>${money(p.price)}</span></div>
+      <div class="muted">${esc(p.artist)} — ${esc(p.description)}</div>
+      <div class="row" style="margin-top:6px">
+        ${!admin && p.status === 'available' ? `<button data-buy="${p.id}">Buy</button>` : ''}
+        ${admin && p.status === 'available' ? `<button data-edit="${p.id}">Edit</button><button data-del="${p.id}">Delete</button>` : ''}</div></div></div></div>`).join('');
+    el.querySelectorAll('[data-buy]').forEach(b => b.onclick = () =>
+      { const p = rows.find(x => x.id == b.dataset.buy);
+        if (!confirm(`Buy "${p.title}" for ${money(p.price)}?
+
+This painting will be marked as sold.`)) return;
+        act(() => api('POST', '/api/orders', { painting_id: p.id }), 'Order placed!'); });
+    el.querySelectorAll('[data-del]').forEach(b => b.onclick = () => {
+      const p = rows.find(x => x.id == b.dataset.del);
+      if (confirm(`Delete "${p.title}"? This cannot be undone.`)) act(() => api('DELETE', '/api/paintings/' + p.id), 'Painting deleted');
+    });
+    el.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => paintingForm($('#pform'), rows.find(p => p.id == b.dataset.edit)));
+  }, 'No paintings yet.');
+}
+function paintingForm(el, p) {
+  el.innerHTML = `<div class="card"><b>${p ? 'Edit painting #' + p.id : 'Add a painting'}</b>
+    <label>Title</label><input id="pt" value="${esc(p?.title)}"><label>Artist</label><input id="pa" value="${esc(p?.artist)}">
+    <label>Description</label><input id="pd" value="${esc(p?.description)}"><label>Price</label><input id="pp" type="number" min="1" step="0.01" value="${esc(p?.price)}">
+    <label>Image (PNG/JPEG/WebP, optional${p ? '; leave empty to keep current' : ''})</label><input id="pi" type="file" accept="image/png,image/jpeg,image/webp">
+    <img id="prev" class="thumb" style="display:none;margin-top:6px" alt="Preview">
+    <div class="row" style="margin-top:8px"><button id="ps">${p ? 'Save' : 'Add'}</button>${p ? '<button id="pc">Cancel</button>' : ''}</div></div>`;
+  $('#pi').onchange = () => { const f = $('#pi').files[0]; const im = $('#prev'); im.style.display = f ? '' : 'none'; if (f) im.src = URL.createObjectURL(f); };
+  $('#ps').onclick = async () => {
+    const f = $('#pi').files[0];
+    if (f && f.size > 2 * 1024 * 1024) return flash('Image must be under 2 MB', false);
+    const image_data = f ? await new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = no; r.readAsDataURL(f); }) : undefined;
+    act(() => api(p ? 'PUT' : 'POST', '/api/paintings' + (p ? '/' + p.id : ''),
+    { title: $('#pt').value, artist: $('#pa').value, description: $('#pd').value, price: Number($('#pp').value), image_data }), p ? 'Painting updated' : 'Painting added');
+  };
+  if (p) $('#pc').onclick = () => show('paintings');
+}
+
+// ---- orders ----
+function ordersView(box) {
+  loadInto(box, () => api('GET', '/api/orders'), (el, rows) => {
+    el.innerHTML = rows.map(o => `<div class="card"><div class="row"><b>#${o.id} ${esc(o.painting_title)}</b><span class="tag ${o.status}">${o.status}</span>
+      <span>${money(o.price)}</span>${user.role === 'admin' ? `<span class="muted">${esc(o.customer_email)}</span>` : ''}
+      ${user.role === 'customer' && o.status === 'placed' ? `<button data-c="${o.id}">Cancel</button>` : ''}</div></div>`).join('');
+    el.querySelectorAll('[data-c]').forEach(b => b.onclick = () => act(() => api('POST', `/api/orders/${b.dataset.c}/cancel`), 'Order cancelled'));
+  }, 'No orders yet.');
+}
+
+// ---- wall booking ----
+const isoDay = (offset) => { const d = new Date(); d.setDate(d.getDate() + offset); return d.toISOString().slice(0, 10); };
+async function wallView(box) {
+  let taken = [];
+  try { taken = await api('GET', '/api/bookings/taken-dates'); } catch {}
+  box.innerHTML = `<div class="card"><h3>Book a wall painting</h3><p class="muted">Rate: ${money(config.wallRate)} per sq ft. Dates 7–90 days away.</p>
+    <label>Date</label><input id="wd" type="date" min="${isoDay(7)}" max="${isoDay(90)}">
+    <label>Wall size (sq ft, 10–500)</label><input id="ws" type="number" min="10" max="500">
+    <label>Address</label><textarea id="wa"></textarea>
+    <p>Estimated price: <b id="wp">—</b></p><button id="wb">Request booking</button>
+    <p class="muted">Dates already taken: ${taken.length ? taken.join(', ') : 'none'}</p></div>`;
+  $('#ws').oninput = () => { $('#wp').textContent = $('#ws').value ? money($('#ws').value * config.wallRate) : '—'; };
+  $('#wb').onclick = () => act(async () => {
+    await api('POST', '/api/bookings', { date: $('#wd').value, wall_sqft: Number($('#ws').value), address: $('#wa').value });
+    view = 'bookings';
+  }, 'Booking requested. The studio will confirm or decline it.');
+}
+function bookingsView(box) {
+  const admin = user.role === 'admin';
+  loadInto(box, () => api('GET', '/api/bookings'), (el, rows) => {
+    el.innerHTML = rows.map(b => `<div class="card"><div class="row"><b>${b.date}</b><span class="tag ${b.status}">${b.status}</span>
+      <span>${b.wall_sqft} sq ft · ${money(b.price)}</span>${admin ? `<span class="muted">${esc(b.customer_email)}</span>` : ''}</div>
+      <div class="muted">${esc(b.address)}</div><div class="row" style="margin-top:6px">
+      ${admin && b.status === 'requested' ? `<button data-a="confirm" data-id="${b.id}">Confirm</button><button data-a="decline" data-id="${b.id}">Decline</button>` : ''}
+      ${!admin && ['requested', 'confirmed'].includes(b.status) ? `<button data-a="cancel" data-id="${b.id}">Cancel</button>` : ''}</div></div>`).join('');
+    el.querySelectorAll('[data-a]').forEach(b => b.onclick = () => act(() => api('POST', `/api/bookings/${b.dataset.id}/${b.dataset.a}`), 'Booking updated: ' + b.dataset.a));
+  }, 'No bookings yet.');
+}
+
+// ---- pottery ----
+function potteryFormView(box, r) {
+  const opt = (arr, sel) => arr.map(x => `<option ${x === sel ? 'selected' : ''}>${esc(x)}</option>`).join('');
+  box.innerHTML = `<div class="card"><h3>${r ? 'Edit request #' + r.id : 'Request custom pottery'}</h3>
+    <label>Item</label><select id="pi">${opt(config.potteryItems, r?.item)}</select>
+    <label>Glaze</label><select id="pg">${opt(config.glazes, r?.glaze)}</select>
+    <label>Quantity (1–12)</label><input id="pq" type="number" min="1" max="12" value="${r?.quantity ?? 1}">
+    <label>Needed by (at least 14 days away)</label><input id="pn" type="date" min="${isoDay(14)}" value="${r?.needed_by ?? ''}">
+    <div class="row" style="margin-top:8px"><button id="pb">${r ? 'Save changes' : 'Send request'}</button></div></div>`;
+  $('#pb').onclick = () => act(async () => {
+    await api(r ? 'PUT' : 'POST', '/api/pottery' + (r ? '/' + r.id : ''),
+      { item: $('#pi').value, glaze: $('#pg').value, quantity: Number($('#pq').value), needed_by: $('#pn').value });
+    view = 'requests';
+  }, r ? 'Request updated' : 'Request sent. The studio will accept or decline it.');
+}
+function requestsView(box) {
+  const admin = user.role === 'admin';
+  loadInto(box, () => api('GET', '/api/pottery'), (el, rows) => {
+    el.innerHTML = rows.map(r => `<div class="card"><div class="row"><b>#${r.id} ${r.quantity} × ${esc(r.item)} (${esc(r.glaze)})</b>
+      <span class="tag ${r.status}">${r.status}</span><span>by ${r.needed_by}</span>
+      ${admin ? `<span class="muted">${esc(r.customer_email)}</span>` : ''}</div><div class="row" style="margin-top:6px">
+      ${admin && r.status === 'requested' ? `<button data-a="accept" data-id="${r.id}">Accept</button><button data-a="decline" data-id="${r.id}">Decline</button>` : ''}
+      ${!admin && r.status === 'requested' ? `<button data-edit="${r.id}">Edit</button><button data-a="cancel" data-id="${r.id}">Cancel</button>` : ''}</div></div>`).join('');
+    el.querySelectorAll('[data-a]').forEach(b => b.onclick = () => act(() => api('POST', `/api/pottery/${b.dataset.id}/${b.dataset.a}`), 'Request updated: ' + b.dataset.a));
+    el.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => potteryFormView(box, rows.find(r => r.id == b.dataset.edit)));
+  }, 'No pottery requests yet.');
+}
+
+render();
+</script>
+</body>
+</html>

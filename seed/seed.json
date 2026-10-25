@@ -1,0 +1,169 @@
+{
+  "currency": "INR",
+  "paintings": [
+    {
+      "id": "p-001",
+      "title": "Madhubani Peacock Garden",
+      "artist": "Meera Kumari",
+      "description": "Madhubani style. Natural pigments on handmade paper, 45 x 60 cm.",
+      "price": 6500,
+      "imageUrl": "images/p-001.jpg",
+      "status": "available"
+    },
+    {
+      "id": "p-002",
+      "title": "Warli Village Scene (Small)",
+      "artist": "Anil Gavit",
+      "description": "Warli style. White rice-paste motifs on a brown canvas board, 25 x 25 cm.",
+      "price": 1800,
+      "imageUrl": "images/p-002.jpg",
+      "status": "available"
+    },
+    {
+      "id": "p-003",
+      "title": "Tanjore Lakshmi with Gold Leaf",
+      "artist": "Revathi Iyer",
+      "description": "Tanjore style. Gold foil and glass stones on a wooden board, 60 x 75 cm.",
+      "price": 24500,
+      "imageUrl": "images/p-003.jpg",
+      "status": "available"
+    },
+    {
+      "id": "p-004",
+      "title": "Pattachitra Dashavatara Panel",
+      "artist": "Bikram Swain",
+      "description": "Pattachitra style. Natural colours on tussar cloth, 40 x 120 cm. Ten avatars of Vishnu in a long panel.",
+      "price": 12000,
+      "imageUrl": "images/p-004.jpg",
+      "status": "sold"
+    },
+    {
+      "id": "p-005",
+      "title": "Kalamkari Tree of Life",
+      "artist": "Padma Reddy",
+      "description": "Kalamkari style. Hand-painted vegetable dyes on cotton, 60 x 90 cm.",
+      "price": 9200,
+      "imageUrl": "images/p-005.jpg",
+      "status": "available"
+    },
+    {
+      "id": "p-006",
+      "title": "Gond Forest Spirits",
+      "artist": "Mohan Markam",
+      "description": "Gond style. Acrylic on canvas, 50 x 70 cm. Birds, deer and trees filled with fine dots and lines.",
+      "price": 7300,
+      "imageUrl": "images/p-006.jpg",
+      "status": "available"
+    },
+    {
+      "id": "p-007",
+      "title": "Cheriyal Panel: Bonalu Procession",
+      "artist": "Ramesh Naidu",
+      "description": "Cheriyal style from Telangana. Poster colours on cloth, 45 x 90 cm.",
+      "price": 6800,
+      "imageUrl": "images/p-007.jpg",
+      "status": "available"
+    },
+    {
+      "id": "p-008",
+      "title": "Rajasthani Miniature: Courtyard at Dusk",
+      "artist": "Kishan Singh Rathore",
+      "description": "Miniature style. Mineral colours on paper, 30 x 40 cm.",
+      "price": 15500,
+      "imageUrl": "images/p-008.jpg",
+      "status": "available"
+    },
+    {
+      "id": "p-009",
+      "title": "Pichwai Lotus Pond",
+      "artist": "Gopal Sharma",
+      "description": "Pichwai style. Pigments and gold on cloth, 60 x 90 cm.",
+      "price": 18000,
+      "imageUrl": "images/p-009.jpg",
+      "status": "sold"
+    },
+    {
+      "id": "p-010",
+      "title": "Nirmal-Style Court Musicians",
+      "artist": "Lakshmi Prasad",
+      "description": "Nirmal style from Telangana. Gold-toned colours on wood, 30 x 45 cm.",
+      "price": 5400,
+      "imageUrl": "images/p-010.jpg",
+      "status": "available"
+    },
+    {
+      "id": "p-011",
+      "title": "Kathakali Face in Kerala Mural Style",
+      "artist": "Sreeja Nair",
+      "description": "Kerala mural style. Natural pigments on a wooden panel, 40 x 50 cm.",
+      "price": 11000,
+      "imageUrl": "images/p-011.jpg",
+      "status": "available"
+    },
+    {
+      "id": "p-012",
+      "title": "Evening Prayers at the Ghats of Varanasi, with Floating Diyas on the Ganga and Temple Bells in the Distance",
+      "artist": "Arjun Mishra",
+      "description": "Oil on canvas, 90 x 120 cm. A wide evening scene of the Ganga aarti, with rows of floating diyas, boats near the steps, and temple spires fading into the haze. This long description is here on purpose, so that your layout is tested with a lot of text.",
+      "price": 25000,
+      "imageUrl": "images/p-012.jpg",
+      "status": "available"
+    }
+  ],
+  "potteryItems": [
+    {
+      "id": "i-01",
+      "name": "Kulhad (clay cup)"
+    },
+    {
+      "id": "i-02",
+      "name": "Surahi (water jug)"
+    },
+    {
+      "id": "i-03",
+      "name": "Matka (water pot)"
+    },
+    {
+      "id": "i-04",
+      "name": "Diya set"
+    },
+    {
+      "id": "i-05",
+      "name": "Gamla (planter)"
+    }
+  ],
+  "glazes": [
+    {
+      "id": "g-01",
+      "name": "Kumkum Red"
+    },
+    {
+      "id": "g-02",
+      "name": "Haldi Yellow"
+    },
+    {
+      "id": "g-03",
+      "name": "Mehendi Green"
+    },
+    {
+      "id": "g-04",
+      "name": "Indigo Blue"
+    },
+    {
+      "id": "g-05",
+      "name": "Sandalwood Beige"
+    },
+    {
+      "id": "g-06",
+      "name": "Charcoal Black"
+    }
+  ],
+  "mural": {
+    "ratePerSqFt": 150
+  },
+  "studioAccount": {
+    "email": "studio@artstudio.in",
+    "password": "Studio@123",
+    "role": "studio"
+  }
+}
