@@ -13,6 +13,8 @@ npm start                # http://localhost:3000
 npm test                 # API tests (RBAC, validation, race conditions)
 ```
 
+Node prints an "SQLite is an experimental feature" warning; it is harmless.
+
 The database file `studio.db` is created and seeded on first start. Delete it to reseed.
 
 **Studio login:** the studio account is defined in `seed/seed.json` under `studioAccount`. It is not shown in the UI.
@@ -25,5 +27,6 @@ It is loaded into the database on first start. To reseed, delete `studio.db` and
 ## Layout
 - `server.js` - API, auth, RBAC, business rules, schema
 - `public/index.html` - the whole UI
-- `test.js` - end-to-end API tests
+- `seed/seed.json` - official seed data; `public/images` - painting images
+- `test.js` - end-to-end API tests (uses a temporary database)
 - `DESIGN.md` - design answers
